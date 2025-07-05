@@ -1,0 +1,34 @@
+@"
+# 🚨 대용량 데이터 파일들 (GitHub 절대 업로드 금지)
+data/
+*.db
+*.sqlite
+*.csv
+*.log
+*.pkl
+project_structure_report.json
+analyze_project.ps1
+
+# Python
+__pycache__/
+*.py[cod]
+*`$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# 개발 환경
+.vscode/
+.env
+secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 임시 파일
+temp/
+*.tmp
+"@ | Out-File -FilePath .gitignore -Encoding utf8 -Force
