@@ -640,90 +640,359 @@ def render_news_page(dashboard):
     """)
 
 def render_buffett_page(dashboard):
-    """워런 버핏 스크리닝 페이지"""
+    """워런 버핏 스크리닝 페이지 - 실제 데이터 활용"""
     st.header("🎯 워런 버핏 스타일 가치투자 스크리닝")
     
-    st.info("""
-    **워런 버핏 투자 철학 기반 종목 스크리닝**
-    
-    현재 DART 데이터를 활용하여 다음 지표들을 분석할 수 있습니다:
-    """)
-    
-    # 분석 가능한 지표들
-    col1, col2 = st.columns(2)
+    # 실제 스크리닝 기능 추가
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.success("✅ **현재 분석 가능한 지표**")
-        available_metrics = [
-            "ROE (자기자본이익률)",
-            "부채비율",
-            "유동비율",
-            "영업이익률",
-            "매출액 증가율",
-            "당기순이익 증가율",
-            "PER (현재가 기준)",
-            "PBR (현재가 기준)"
-        ]
-        for metric in available_metrics:
-            st.write(f"• {metric}")
+        st.info("""
+        **워런 버핏 투자 철학 기반 실제 종목 스크리닝**
+        
+        📊 실제 DART 재무제표 데이터를 활용하여 워런 버핏 기준으로 종목을 분석합니다.
+        """)
     
     with col2:
-        st.warning("🔄 **구현 예정 지표**")
-        upcoming_metrics = [
-            "소유주 이익 (Owner Earnings)",
-            "내재가치 성장률",
-            "경제적 해자 분석",
-            "FCF (잉여현금흐름)",
-            "ROIC (투하자본이익률)",
-            "Graham Number",
-            "Piotroski F-Score",
-            "Magic Formula Ranking"
-        ]
-        for metric in upcoming_metrics:
-            st.write(f"• {metric}")
+        st.success("✅ **실제 데이터 활용**")
+        st.write("• DART 재무제표 기반")
+        st.write("• 실시간 계산")
+        st.write("• 객관적 평가")
     
-    # 샘플 스크리닝 결과
-    st.subheader("📊 샘플 스크리닝 결과 (데모)")
+    # 스크리닝 조건 설정
+    st.subheader("⚙️ 스크리닝 조건 설정")
     
-    # 가상의 스크리닝 데이터 (실제로는 DB에서 계산)
-    sample_data = {
-        '종목명': ['삼성전자', 'SK하이닉스', 'NAVER', '현대차', '삼성SDI'],
-        'ROE(%)': [12.5, 15.8, 11.2, 8.9, 14.3],
-        '부채비율(%)': [45.2, 52.1, 23.4, 67.8, 41.2],
-        'PER': [18.5, 22.1, 25.4, 8.2, 19.7],
-        'PBR': [1.8, 2.1, 2.9, 0.9, 2.3],
-        '버핏점수': [75, 82, 68, 64, 78]
-    }
+    col1, col2, col3 = st.columns(3)
     
-    sample_df = pd.DataFrame(sample_data)
+    with col1:
+        min_roe = st.slider("최소 ROE (%)", min_value=5, max_value=30, value=15, step=1)
+        st.caption("워런 버핏 기준: 15% 이상")
     
-    # 버핏 점수 기준 정렬
-    sample_df = sample_df.sort_values('버핏점수', ascending=False)
+    with col2:
+        max_debt_ratio = st.slider("최대 부채비율 (%)", min_value=20, max_value=80, value=50, step=5)
+        st.caption("안전 기준: 50% 이하")
     
-    st.dataframe(sample_df, use_container_width=True)
+    with col3:
+        min_current_ratio = st.slider("최소 유동비율 (%)", min_value=100, max_value=300, value=150, step=10)
+        st.caption("유동성 기준: 150% 이상")
     
-    # 버핏 점수 차트
-    fig = px.bar(
-        sample_df,
-        x='종목명',
-        y='버핏점수',
-        color='버핏점수',
-        color_continuous_scale='RdYlGn',
-        title="📊 워런 버핏 스타일 종합 점수",
-        text='버핏점수'
-    )
-    fig.update_traces(texttemplate='%{text}점', textposition='outside')
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    # 스크리닝 실행 버튼
+    if st.button("🔍 워런 버핏 스크리닝 실행", type="primary"):
+        with st.spinner("📊 재무제표 데이터를 분석하고 있습니다..."):
+            screened_results = run_buffett_screening_real(dashboard, min_roe, max_debt_ratio, min_current_ratio)
+            
+            if screened_results is not None and len(screened_results) > 0:
+                st.success(f"🎉 조건을 만족하는 {len(screened_results)}개 종목을 발견했습니다!")
+                
+                # 결과 테이블
+                st.subheader("📋 스크리닝 결과")
+                
+                # 컬럼 순서 정리
+                display_columns = ['corp_name', 'stock_code', 'ROE', '부채비율', '유동비율', '영업이익률']
+                available_columns = [col for col in display_columns if col in screened_results.columns]
+                
+                # 스타일링된 데이터프레임
+                styled_df = screened_results[available_columns].copy()
+                
+                # 조건부 스타일링 함수
+                def highlight_conditions(val, column):
+                    if column == 'ROE':
+                        return 'background-color: lightgreen' if val >= min_roe else 'background-color: lightcoral'
+                    elif column == '부채비율':
+                        return 'background-color: lightgreen' if val <= max_debt_ratio else 'background-color: lightcoral'
+                    elif column == '유동비율':
+                        return 'background-color: lightgreen' if val >= min_current_ratio else 'background-color: lightcoral'
+                    return ''
+                
+                st.dataframe(styled_df, use_container_width=True)
+                
+                # 결과 시각화
+                if len(screened_results) > 0:
+                    st.subheader("📊 스크리닝 결과 시각화")
+                    
+                    # ROE vs 부채비율 산점도
+                    fig_scatter = px.scatter(
+                        screened_results,
+                        x='부채비율',
+                        y='ROE',
+                        size='유동비율',
+                        hover_name='corp_name',
+                        color='영업이익률',
+                        title="🎯 워런 버핏 우량주 분포 (ROE vs 부채비율)",
+                        labels={
+                            'ROE': 'ROE (%)',
+                            '부채비율': '부채비율 (%)',
+                            '영업이익률': '영업이익률 (%)'
+                        }
+                    )
+                    
+                    # 기준선 추가
+                    fig_scatter.add_hline(y=min_roe, line_dash="dash", line_color="red", 
+                                        annotation_text=f"ROE 기준선 ({min_roe}%)")
+                    fig_scatter.add_vline(x=max_debt_ratio, line_dash="dash", line_color="red", 
+                                        annotation_text=f"부채비율 기준선 ({max_debt_ratio}%)")
+                    
+                    st.plotly_chart(fig_scatter, use_container_width=True)
+                    
+                    # 상위 종목 막대차트
+                    if 'ROE' in screened_results.columns:
+                        top_roe = screened_results.nlargest(10, 'ROE')
+                        
+                        fig_bar = px.bar(
+                            top_roe,
+                            x='corp_name',
+                            y='ROE',
+                            color='ROE',
+                            color_continuous_scale='RdYlGn',
+                            title="🏆 ROE 상위 10개 종목",
+                            text='ROE'
+                        )
+                        fig_bar.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_bar.update_xaxes(tickangle=45)
+                        fig_bar.update_layout(height=500)
+                        st.plotly_chart(fig_bar, use_container_width=True)
+                
+                # 종목별 상세 분석
+                st.subheader("🔍 종목별 상세 분석")
+                
+                if len(screened_results) > 0:
+                    selected_stock = st.selectbox(
+                        "분석할 종목을 선택하세요:",
+                        options=screened_results['corp_name'].tolist(),
+                        index=0
+                    )
+                    
+                    selected_data = screened_results[screened_results['corp_name'] == selected_stock].iloc[0]
+                    
+                    # 선택된 종목의 상세 정보 표시
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        roe_status = "✅" if selected_data['ROE'] >= min_roe else "❌"
+                        st.metric(
+                            f"ROE {roe_status}",
+                            f"{selected_data['ROE']:.2f}%",
+                            delta=f"기준: {min_roe}% 이상"
+                        )
+                    
+                    with col2:
+                        debt_status = "✅" if selected_data['부채비율'] <= max_debt_ratio else "❌"
+                        st.metric(
+                            f"부채비율 {debt_status}",
+                            f"{selected_data['부채비율']:.2f}%",
+                            delta=f"기준: {max_debt_ratio}% 이하"
+                        )
+                    
+                    with col3:
+                        current_status = "✅" if selected_data['유동비율'] >= min_current_ratio else "❌"
+                        st.metric(
+                            f"유동비율 {current_status}",
+                            f"{selected_data['유동비율']:.2f}%",
+                            delta=f"기준: {min_current_ratio}% 이상"
+                        )
+                    
+                    with col4:
+                        if '영업이익률' in selected_data:
+                            operating_margin = selected_data['영업이익률']
+                            margin_status = "✅" if operating_margin >= 10 else "❌"
+                            st.metric(
+                                f"영업이익률 {margin_status}",
+                                f"{operating_margin:.2f}%",
+                                delta="기준: 10% 이상"
+                            )
+                    
+                    # 종목 투자 평가
+                    st.subheader(f"📈 {selected_stock} 투자 평가")
+                    
+                    # 종합 점수 계산
+                    score = 0
+                    max_score = 4
+                    
+                    criteria_met = []
+                    criteria_failed = []
+                    
+                    if selected_data['ROE'] >= min_roe:
+                        score += 1
+                        criteria_met.append(f"ROE {selected_data['ROE']:.1f}% (기준: {min_roe}% 이상)")
+                    else:
+                        criteria_failed.append(f"ROE {selected_data['ROE']:.1f}% (기준: {min_roe}% 이상)")
+                    
+                    if selected_data['부채비율'] <= max_debt_ratio:
+                        score += 1
+                        criteria_met.append(f"부채비율 {selected_data['부채비율']:.1f}% (기준: {max_debt_ratio}% 이하)")
+                    else:
+                        criteria_failed.append(f"부채비율 {selected_data['부채비율']:.1f}% (기준: {max_debt_ratio}% 이하)")
+                    
+                    if selected_data['유동비율'] >= min_current_ratio:
+                        score += 1
+                        criteria_met.append(f"유동비율 {selected_data['유동비율']:.1f}% (기준: {min_current_ratio}% 이상)")
+                    else:
+                        criteria_failed.append(f"유동비율 {selected_data['유동비율']:.1f}% (기준: {min_current_ratio}% 이상)")
+                    
+                    if '영업이익률' in selected_data and selected_data['영업이익률'] >= 10:
+                        score += 1
+                        criteria_met.append(f"영업이익률 {selected_data['영업이익률']:.1f}% (기준: 10% 이상)")
+                    elif '영업이익률' in selected_data:
+                        criteria_failed.append(f"영업이익률 {selected_data['영업이익률']:.1f}% (기준: 10% 이상)")
+                    
+                    # 점수에 따른 평가
+                    score_percentage = (score / max_score) * 100
+                    
+                    if score_percentage >= 75:
+                        st.success(f"🏆 우수 ({score}/{max_score}): 워런 버핏 기준 충족!")
+                    elif score_percentage >= 50:
+                        st.warning(f"⚠️ 보통 ({score}/{max_score}): 일부 기준 미달")
+                    else:
+                        st.error(f"❌ 부족 ({score}/{max_score}): 투자 재검토 필요")
+                    
+                    # 충족/미달 기준 표시
+                    if criteria_met:
+                        st.success("✅ **충족 기준:**")
+                        for criterion in criteria_met:
+                            st.write(f"• {criterion}")
+                    
+                    if criteria_failed:
+                        st.error("❌ **미달 기준:**")
+                        for criterion in criteria_failed:
+                            st.write(f"• {criterion}")
+            
+            else:
+                st.warning("😔 설정한 조건을 만족하는 종목이 없습니다.")
+                st.info("조건을 완화하여 다시 시도해보세요.")
     
-    st.info("""
-    **📝 스크리닝 기준 (예시)**
-    - ROE > 15%: 우수한 자기자본 수익률
-    - 부채비율 < 50%: 안정적인 재무구조  
-    - PER < 20: 적정 밸류에이션
-    - PBR < 3: 장부가치 대비 합리적 가격
-    - 매출/이익 성장률 > 5%: 지속적 성장
-    """)
+    # 워런 버핏 투자 철학 설명
+    with st.expander("💡 워런 버핏 투자 철학", expanded=False):
+        st.markdown("""
+        ### 🎯 워런 버핏의 핵심 투자 원칙
+        
+        **1. 🏆 우수한 수익성 (ROE ≥ 15%)**
+        - 자기자본이익률이 지속적으로 높은 기업
+        - 경영진의 효율적인 자본 운용 능력 반영
+        
+        **2. 🛡️ 안정적인 재무구조 (부채비율 ≤ 50%)**
+        - 과도한 부채로 인한 리스크 회피
+        - 경기 침체 시에도 생존할 수 있는 안전성
+        
+        **3. 💰 충분한 유동성 (유동비율 ≥ 150%)**
+        - 단기 지급능력 확보
+        - 운영 자금의 여유로움
+        
+        **4. 📈 우수한 영업 효율성 (영업이익률 ≥ 10%)**
+        - 본업에서의 경쟁력
+        - 지속가능한 수익 창출 능력
+        
+        ### 📚 추가 고려사항
+        - **경제적 해자**: 지속가능한 경쟁우위
+        - **경영진 품질**: 주주 친화적 경영
+        - **사업 이해도**: 본인이 이해할 수 있는 사업
+        - **적정 가격**: 내재가치 대비 할인된 가격에 매수
+        """)
+
+
+def run_buffett_screening_real(dashboard, min_roe=15, max_debt_ratio=50, min_current_ratio=150):
+    """실제 DART 데이터를 활용한 워런 버핏 스크리닝"""
+    
+    # DART 데이터베이스가 있는지 확인
+    if not dashboard.dart_db.exists():
+        st.error("DART 데이터베이스가 없습니다. 먼저 DART 데이터를 수집해주세요.")
+        return None
+    
+    try:
+        # DART 데이터베이스에서 재무 데이터 조회 및 계산
+        conn = sqlite3.connect(dashboard.dart_db)
+        
+        # 재무비율 계산 쿼리
+        query = """
+        WITH financial_base AS (
+            SELECT 
+                ci.corp_code,
+                ci.corp_name,
+                ci.stock_code,
+                fs.bsns_year,
+                fs.account_nm,
+                CAST(REPLACE(fs.thstrm_amount, ',', '') AS REAL) as amount
+            FROM company_info ci
+            JOIN financial_statements fs ON ci.corp_code = fs.corp_code
+            WHERE ci.stock_code IS NOT NULL 
+            AND ci.stock_code != ''
+            AND fs.bsns_year = '2023'
+            AND fs.thstrm_amount IS NOT NULL
+            AND fs.thstrm_amount != ''
+            AND fs.thstrm_amount != '-'
+        ),
+        pivot_data AS (
+            SELECT 
+                corp_code,
+                corp_name,
+                stock_code,
+                bsns_year,
+                SUM(CASE WHEN account_nm = '당기순이익' THEN amount END) as net_income,
+                SUM(CASE WHEN account_nm = '자본총계' THEN amount END) as total_equity,
+                SUM(CASE WHEN account_nm = '자산총계' THEN amount END) as total_assets,
+                SUM(CASE WHEN account_nm = '부채총계' THEN amount END) as total_debt,
+                SUM(CASE WHEN account_nm = '유동자산' THEN amount END) as current_assets,
+                SUM(CASE WHEN account_nm = '유동부채' THEN amount END) as current_debt,
+                SUM(CASE WHEN account_nm = '영업이익' THEN amount END) as operating_income,
+                SUM(CASE WHEN account_nm = '매출액' THEN amount END) as revenue
+            FROM financial_base
+            GROUP BY corp_code, corp_name, stock_code, bsns_year
+        )
+        SELECT 
+            corp_name,
+            stock_code,
+            ROUND((net_income / NULLIF(total_equity, 0)) * 100, 2) as ROE,
+            ROUND((total_debt / NULLIF(total_equity, 0)) * 100, 2) as debt_ratio,
+            ROUND((current_assets / NULLIF(current_debt, 0)) * 100, 2) as current_ratio,
+            ROUND((operating_income / NULLIF(revenue, 0)) * 100, 2) as operating_margin,
+            net_income,
+            total_equity,
+            total_assets,
+            revenue
+        FROM pivot_data
+        WHERE net_income IS NOT NULL 
+        AND total_equity IS NOT NULL 
+        AND total_equity > 0
+        AND total_debt IS NOT NULL
+        AND current_assets IS NOT NULL
+        AND current_debt IS NOT NULL
+        AND current_debt > 0
+        AND operating_income IS NOT NULL
+        AND revenue IS NOT NULL
+        AND revenue > 0
+        """
+        
+        # 데이터 조회
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        
+        if df.empty:
+            st.warning("재무 데이터가 충분하지 않습니다. DART 데이터 수집을 다시 실행해보세요.")
+            return None
+        
+        # 스크리닝 조건 적용
+        screened = df[
+            (df['ROE'] >= min_roe) &
+            (df['debt_ratio'] <= max_debt_ratio) &
+            (df['current_ratio'] >= min_current_ratio)
+        ].copy()
+        
+        # NaN 값 제거
+        screened = screened.dropna(subset=['ROE', 'debt_ratio', 'current_ratio'])
+        
+        # ROE 기준으로 정렬
+        screened = screened.sort_values('ROE', ascending=False)
+        
+        # 컬럼명 한글화
+        screened.columns = screened.columns.str.replace('debt_ratio', '부채비율')
+        screened.columns = screened.columns.str.replace('current_ratio', '유동비율')
+        screened.columns = screened.columns.str.replace('operating_margin', '영업이익률')
+        
+        return screened
+        
+    except Exception as e:
+        st.error(f"스크리닝 중 오류 발생: {e}")
+        st.info("DART 데이터베이스 구조를 확인해주세요.")
+        return None
 
 def render_structure_page(dashboard):
     """프로젝트 구조 페이지"""
