@@ -448,15 +448,19 @@ def quick_sentiment_analysis():
     try:
         # 07_buffett_sentiment_analyzer.py 파일에서 직접 import
         sys.path.append(str(project_root / "examples" / "basic_examples"))
-        
+
         # BuffettSentimentAnalyzer 클래스 임포트 시도
         try:
-            from _07_buffett_sentiment_analyzer import BuffettSentimentAnalyzer
+            from buffett_sentiment_analyzer import BuffettSentimentAnalyzer
         except ImportError:
             try:
-                # 파일명에서 07_ 부분을 제거하고 시도
-                from buffett_sentiment_analyzer import BuffettSentimentAnalyzer
-            except ImportError:
+                import importlib.util
+                module_path = project_root / "examples" / "basic_examples" / "buffett_sentiment_analyzer.py"
+                spec = importlib.util.spec_from_file_location("buffett_sentiment_analyzer", str(module_path))
+                buffett_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(buffett_module)
+                BuffettSentimentAnalyzer = buffett_module.BuffettSentimentAnalyzer
+            except Exception:
                 print("❌ BuffettSentimentAnalyzer를 찾을 수 없습니다.")
                 print("🔧 다음 파일을 먼저 실행하세요:")
                 print("   python examples/basic_examples/07_buffett_sentiment_analyzer.py")
